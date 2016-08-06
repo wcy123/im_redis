@@ -7,7 +7,7 @@
 is_block() ->
     true.
 timeout() ->
-    1000.
+    infinity.
 
 q(Name, Q) ->
     request(Name, fun eredis:q/2, [Q]).
@@ -17,30 +17,24 @@ pq(Name, PQ) ->
 request(Name, Fun, Args) ->
     try
         Worker = poolboy:checkout(Name, is_block(), timeout()),
-        im_alarm_handler:clear_alarm({Name, checkout}),
         maybe_do_work(Name, Worker, Fun, Args)
     catch
         Class:Reason ->
-            im_alarm_handler:set_alarm({{Name, checkout}, {Class, Reason, erlang:get_stacktrace()}}),
             {error, {Class, Reason}}
     end.
 
 maybe_do_work(Name, Pid, Fun, Args)
   when is_pid(Pid) ->
-    im_alarm_handler:clear_alarm({Name, full}),
     do_work(Name, Pid, Fun, Args);
-maybe_do_work(Name, full, _Fun, _Args) ->
-    im_alarm_handler:set_alarm({{Name, full}, "please increase worker pool size"}),
+maybe_do_work(_Name, full, _Fun, _Args) ->
     {error, full}.
 
 do_work(Name, Pid, Fun, Args) ->
     try
-        Ret = apply(Fun, [Pid | Args]),
-        im_alarm_handler:clear_alarm({Name, do_work}),
-        Ret
+        apply(Fun, [Pid | Args])
     catch
         Class:Reason ->
-            im_alarm_handler:set_alarm({{Name, do_work}, {Class, Reason, erlang:get_stacktrace()}})
+            {error, {Class, Reason}}
     after
         ok = poolboy:checkin(Name, Pid)
     end.

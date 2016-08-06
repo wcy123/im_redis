@@ -20,14 +20,14 @@ start_link() ->
 %% ===================================================================
 
 init([]) ->
-    PoolNames = application:get_env(message_store, redis,[]),
+    PoolNames = application:get_env(im_redis,pool,[]),
     PropLists = lists:map(fun read_env/1, PoolNames),
     PoolSpecs = lists:map(fun plist_to_pool_spec/1,PropLists),
     {ok, { {one_for_one, 5, 10}, PoolSpecs} }.
 
 
 read_env(Name) ->
-    read_env_plist(Name, application:get_env(message_store, Name)).
+    read_env_plist(Name, application:get_env(im_redis, Name)).
 
 read_env_plist(Name, {ok, PropList}) ->
     [{name, Name} | PropList];
