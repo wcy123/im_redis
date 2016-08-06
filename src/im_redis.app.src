@@ -1,0 +1,14 @@
+{application, im_redis,
+ [
+  {description, "redis pool"},
+  {vsn, git},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  lager,
+                  im_alarm_handler
+                 ]},
+  {mod, { im_redis_app, []}},
+  {env, []}
+ ]}.

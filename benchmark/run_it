@@ -1,0 +1,65 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -smp enable -sname nodename -mnesia debug verbose
+main([PoolSize0, PQSize0, Length0, Solution0]) ->
+    setup_path(),
+    try
+        PoolSize = list_to_integer(PoolSize0),
+        PQSize = list_to_integer(PQSize0),
+        Length = list_to_integer(Length0),
+        Solution = case Solution0 of
+                       "im_redis" -> im_redis;
+                       "cuesport" -> cuesport
+                   end,
+        setup_env(PoolSize, PQSize, Length, Solution),
+        application:ensure_all_started(message_store),
+        application:ensure_all_started(im_redis),
+        io:format("~s~n", [erlang:iolist_to_binary(["benchmark started: \n"
+                                                    , "\tPoolSize = ", io_lib_pretty:print(PoolSize), "\n"
+                                                    , "\tPQSize = ", io_lib_pretty:print(PQSize), "\n"
+                                                    , "\tLength = ", io_lib_pretty:print(Length), "\n"
+                                                    , "\tSolution = ", io_lib_pretty:print(Solution), "\n"
+
+                                                   ])]),
+        {Elapse, _} = timer:tc(benchemark_im_redis,start,[]),
+        io:format("~s~n", [erlang:iolist_to_binary(["benchmark ended: \n"
+                                                   , "\tQPS = ", io_lib_pretty:print(PQSize*Length/(Elapse/1000000)), "\n"
+                                                   ])])
+    catch
+        Class:Error ->
+            usage(Class,Error)
+    end;
+main(X) ->
+    usage(1,X).
+
+usage(Class,Error) ->
+    halt(1).
+
+setup_path() ->
+    ScriptName = escript:script_name(),
+    ScriptDir = filename:dirname(ScriptName),
+    ProjectRoot = filename:join([ScriptDir, "..", "..", ".."]),
+    Dirs = filelib:wildcard(filename:join([ProjectRoot, "apps", "*", "ebin"]))
+        ++ filelib:wildcard(filename:join([ProjectRoot, "deps", "*", "ebin"]))
+        ++ [ScriptDir],
+    lists:foreach(fun code:add_path/1, Dirs).
+
+setup_env(PoolSize, PQSize, Length, Solution) ->
+    application:load(message_store),
+    application:load(im_redis),
+    application:set_env(message_store, redis, [index]),
+    application:set_env(message_store, index,
+                        [{host, "ssy-app"},
+                         {port, 6379},
+                         {db, 0},
+                         {pool_size, PoolSize},
+                         {max_overflow, 0}
+                        ]),
+    application:set_env(im_redis, benchmark_pq_size, PQSize),
+    application:set_env(im_redis, benchmark_length, Length),
+    setup_solution(Solution).
+
+setup_solution(im_redis) ->
+    application:set_env(im_redis, solution, im_redis);
+setup_solution(cuesport) ->
+    application:set_env(im_redis, solution, cuesport).
