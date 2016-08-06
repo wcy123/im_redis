@@ -1,7 +1,7 @@
 -module(im_redis).
 -author('wcy123@gmail.com').
 -compile([{parse_transform, lager_transform}]).
--export([q/2,qp/2]).
+-export([q/2,qp/2, list2plist/1]).
 
 
 is_block() ->
@@ -94,3 +94,13 @@ qp_check(QP, RetList) ->
               end
       end,
       lists:zip(QP, RetList)).
+
+
+list2plist(L) ->
+    list2plist(L,[]).
+list2plist([], Acc) ->
+    lists:reverse(Acc);
+list2plist([K], Acc) ->
+    lists:reverse([{K,undefined} | Acc]);
+list2plist([K,V|T], Acc) ->
+    list2plist(T, [{K,V} | Acc]).
