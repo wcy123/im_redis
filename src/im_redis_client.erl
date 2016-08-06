@@ -351,7 +351,6 @@ try_connect(#state{host = Host,
     case connect(State) of
         {ok, NewState} ->
             lager:debug("im_redis_client conect to server ~s:~p OK~n", [Host, Port]),
-            im_alarm_handler:clear_alarm({redis_connection, Host, Port}),
             NewState;
         {error, Reason} ->
             lager:error("im_redis_client cannot connect to server ~s:~p, Reason = ~p,"
@@ -359,7 +358,6 @@ try_connect(#state{host = Host,
                         " \n      Statck = ~p"
                         "~n",
                         [Host, Port, Reason, ConnectTimeout, erlang:get_stacktrace()]),
-            im_alarm_handler:set_alarm({{redis_connection, Host, Port}, Reason}),
             State#state{socket = undefined}
     end.
 
